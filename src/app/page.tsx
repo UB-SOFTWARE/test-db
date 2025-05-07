@@ -1,103 +1,135 @@
-import Image from "next/image";
+"use client";
+import { useState, useRef } from "react";
+import { useAuth } from "@/context/AuthContext";
+
+// Define a proper type for user data
+interface UserData {
+   id?: string;
+   name?: string;
+   email: string;
+   companyName?: string;
+   items?: Array<{
+      itemname: string;
+      itemcode: string;
+      createdat?: string;
+   }>;
+}
+
+// Component for displaying items table
+const ItemsTable = ({ items }: { items: UserData['items'] }) => {
+   if (!items || items.length === 0) {
+      return <p>No items data available for this company.</p>;
+   }
+
+   return (
+      <div className="items-container">
+         <h2>Company Items:</h2>
+         <table className="items-table">
+            <thead>
+               <tr>
+                  <th>Item Name</th>
+                  <th>Item Code</th>
+                  <th>Created At</th>
+               </tr>
+            </thead>
+            <tbody>
+               {items.map((item, index) => (
+                  <tr key={index}>
+                     <td>{item.itemname}</td>
+                     <td>{item.itemcode}</td>
+                     <td>{item.createdat ? new Date(item.createdat).toLocaleString() : 'N/A'}</td>
+                  </tr>
+               ))}
+            </tbody>
+         </table>
+      </div>
+   );
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+   const [isSubmitting, setIsSubmitting] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const { isLoggedIn, user, login, logout } = useAuth();
+   const formRef = useRef<HTMLFormElement>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+      event.preventDefault();
+      setIsSubmitting(true);
+      setError(null);
+
+      const formData = new FormData(event.currentTarget);
+      const email = formData.get('email') as string;
+      const password = formData.get('password') as string;
+
+      try {
+         const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+         });
+
+         const data = await response.json();
+
+         if (!response.ok) {
+            throw new Error(data.message || 'Authentication failed');
+         }
+
+         login(data.user);
+         console.log('Retrieved user data:', data.user);
+         formRef.current?.reset();
+      } catch (error) {
+         console.error('Error:', error);
+         setError(error instanceof Error ? error.message : 'Login failed');
+      } finally {
+         setIsSubmitting(false);
+      }
+   }
+
+   if (isLoggedIn && user) {
+      return (
+         <div className="login-success">
+            <h1>Welcome, {user.name || user.email}!</h1>
+            <p>You have successfully logged in.</p>
+            <div className="user-info">
+               <p><strong>Email:</strong> {user.email}</p>
+               <p><strong>Company:</strong> {user.companyName || 'No company assigned'}</p>
+               <ItemsTable items={user.items} />
+            </div>
+            <button onClick={logout}>Log out</button>
+         </div>
+      );
+   }
+
+   return (
+      <div className="login-container">
+         <h1>Login</h1>
+         <p>Please enter your credentials to access your account.</p>
+         {error && <div className="error-message">{error}</div>}
+         <form ref={formRef} onSubmit={handleSubmit}>
+            <div className="form-group">
+               <label htmlFor="email">Email</label>
+               <input
+                  type="email"
+                  id="email"
+                  placeholder="Enter your email"
+                  name="email"
+                  required
+               />
+            </div>
+            <div className="form-group">
+               <label htmlFor="password">Password</label>
+               <input
+                  type="password"
+                  id="password"
+                  placeholder="Enter your password"
+                  name="password"
+                  required
+               />
+            </div>
+            <button type="submit" disabled={isSubmitting}>
+               {isSubmitting ? 'Logging in...' : 'Login'}
+            </button>
+         </form>
+      </div>
+   );
 }
